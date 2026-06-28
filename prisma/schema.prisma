@@ -1,0 +1,18 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model File {
+  id        String   @id @default(cuid())
+  name      String
+  url       String
+  size      Int
+  userId    String
+  content   String   // ✅ store actual file content
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
