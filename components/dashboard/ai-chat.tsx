@@ -14,6 +14,7 @@ export function AiChatAgent({ attachedFile }: { attachedFile: File | null }) {
   const [indexError, setIndexError] = useState<string | null>(null)
   const [input, setInput] = useState("")
   const fileIdRef = useRef<string | null>(null)
+  const fileContentRef = useRef<string>("")
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -21,6 +22,7 @@ export function AiChatAgent({ attachedFile }: { attachedFile: File | null }) {
       setFileId(null)
       setIndexError(null)
       fileIdRef.current = null
+      fileContentRef.current = ""
       return
     }
 
@@ -28,6 +30,9 @@ export function AiChatAgent({ attachedFile }: { attachedFile: File | null }) {
     const fileName = attachedFile.name.toLowerCase()
 
     const processContent = async (content: string) => {
+      // ✅ Always store clean CSV content in ref for chatbot use
+      fileContentRef.current = content
+
       const id = `${attachedFile.name}-${attachedFile.size}`
       setFileId(id)
       fileIdRef.current = id
@@ -38,7 +43,11 @@ export function AiChatAgent({ attachedFile }: { attachedFile: File | null }) {
         const res = await fetch("/api/files/index", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ fileId: id, content, fileName: attachedFile.name }),
+          body: JSON.stringify({
+            fileId: id,
+            content,  // always clean CSV — never binary
+            fileName: attachedFile.name,
+          }),
         })
         if (!res.ok) throw new Error("Indexing failed")
       } catch (err) {
@@ -50,25 +59,38 @@ export function AiChatAgent({ attachedFile }: { attachedFile: File | null }) {
     }
 
     if (fileName.endsWith(".csv")) {
+      // ✅ CSV: read as plain text directly
       reader.onload = (e) => processContent(e.target?.result as string)
       reader.readAsText(attachedFile)
-   } else if (fileName.endsWith(".xlsx") || fileName.endsWith(".xls")) {
-  reader.onload = (e) => {
-    const data = new Uint8Array(e.target?.result as ArrayBuffer)
-    const workbook = XLSX.read(data, { type: "array" })
-    const worksheet = workbook.Sheets[workbook.SheetNames[0]]
-    
-    // ✅ Convert to CSV and filter out empty rows
-    const csv = XLSX.utils.sheet_to_csv(worksheet)
-    const cleanedCsv = csv
-      .split("\n")
-      .filter(row => row.replace(/,/g, "").trim() !== "") // remove rows that are all commas/empty
-      .join("\n")
-    
-    processContent(cleanedCsv)
-  }
-  reader.readAsArrayBuffer(attachedFile)
-}else {
+
+    } else if (fileName.endsWith(".xlsx") || fileName.endsWith(".xls")) {
+      // ✅ Excel: read as binary → convert to clean CSV
+      reader.onload = (e) => {
+        try {
+          const data = new Uint8Array(e.target?.result as ArrayBuffer)
+          const workbook = XLSX.read(data, { type: "array" })
+          const worksheet = workbook.Sheets[workbook.SheetNames[0]]
+
+          // Convert to CSV
+          const csv = XLSX.utils.sheet_to_csv(worksheet)
+
+          // ✅ Filter out empty rows (rows that are only commas)
+          const cleanedCsv = csv
+            .split("\n")
+            .filter(row => row.replace(/,/g, "").trim() !== "")
+            .join("\n")
+
+          processContent(cleanedCsv)
+        } catch (err) {
+          console.error("Excel parsing failed:", err)
+          setIndexError("Failed to read Excel file. Please try again.")
+          setIndexing(false)
+        }
+      }
+      reader.readAsArrayBuffer(attachedFile)
+
+    } else {
+      // Fallback for other text files
       reader.onload = (e) => processContent(e.target?.result as string)
       reader.readAsText(attachedFile)
     }
@@ -78,13 +100,18 @@ export function AiChatAgent({ attachedFile }: { attachedFile: File | null }) {
     transport: new DefaultChatTransport({
       api: "/api/chat",
       prepareSendMessagesRequest: ({ id, messages }) => ({
-        body: { id, messages, fileId: fileIdRef.current },
+        body: {
+          id,
+          messages,
+          fileId: fileIdRef.current,
+        },
       }),
     }),
   })
 
   const isLoading = status === "submitted" || status === "streaming"
 
+  // ✅ Auto scroll to bottom on new messages
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages])
@@ -114,6 +141,7 @@ export function AiChatAgent({ attachedFile }: { attachedFile: File | null }) {
         <div className="flex-1 overflow-y-auto p-4 min-h-0">
           <div className="space-y-4">
 
+            {/* Welcome message */}
             {messages.length === 0 && (
               <div className="flex gap-3">
                 <div className="bg-purple-100 p-2 rounded-full h-8 w-8 flex items-center justify-center shrink-0">
@@ -125,12 +153,14 @@ export function AiChatAgent({ attachedFile }: { attachedFile: File | null }) {
               </div>
             )}
 
+            {/* Index error banner */}
             {indexError && (
               <div className="bg-red-50 border border-red-200 text-red-600 text-xs p-3 rounded-lg">
                 {indexError}
               </div>
             )}
 
+            {/* Messages */}
             {messages.map((m) => (
               <div key={m.id} className={`flex gap-3 ${m.role === "user" ? "flex-row-reverse" : ""}`}>
                 <div className={`p-2 rounded-full h-8 w-8 flex items-center justify-center shrink-0 ${
@@ -152,10 +182,13 @@ export function AiChatAgent({ attachedFile }: { attachedFile: File | null }) {
                 </div>
               </div>
             ))}
+
+            {/* Scroll anchor */}
             <div ref={bottomRef} />
           </div>
         </div>
 
+        {/* Input area */}
         <div className="p-4 border-t bg-gray-50 flex flex-col gap-2 shrink-0">
           {attachedFile && (
             <div className={`flex items-center gap-2 text-xs font-medium px-3 py-1.5 rounded-md w-fit border ${
@@ -179,9 +212,11 @@ export function AiChatAgent({ attachedFile }: { attachedFile: File | null }) {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder={
-                indexing ? "Please wait, indexing file..."
-                : attachedFile ? `Ask about ${attachedFile.name}...`
-                : "Please upload a CSV or Excel file first..."
+                indexing
+                  ? "Please wait, indexing file..."
+                  : attachedFile
+                  ? `Ask about ${attachedFile.name}...`
+                  : "Please upload a CSV or Excel file first..."
               }
               className="flex-1 bg-white"
               disabled={!attachedFile || isLoading || indexing}
@@ -195,7 +230,9 @@ export function AiChatAgent({ attachedFile }: { attachedFile: File | null }) {
                   : "bg-gray-300 cursor-not-allowed"
               } text-white p-2 rounded-md transition flex items-center justify-center w-10 h-10`}
             >
-              {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              {isLoading
+                ? <Loader2 className="h-4 w-4 animate-spin" />
+                : <Send className="h-4 w-4" />}
             </button>
           </form>
         </div>

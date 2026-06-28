@@ -3,12 +3,15 @@
 import { auth } from "@clerk/nextjs/server"
 import prisma from "@/lib/prisma-db"
 
-export async function saveFileToDatabase(name: string, content: string, size: number) {
+export async function saveFileToDatabase(
+  name: string,
+  content: string,      // CSV for AI
+  size: number,
+  fileType: string,
+  originalBinary?: string  // ✅ Base64 original file
+) {
   const { userId } = await auth()
-
-  if (!userId) {
-    throw new Error("Unauthorized")
-  }
+  if (!userId) throw new Error("Unauthorized")
 
   const newFile = await prisma.file.create({
     data: {
@@ -16,7 +19,9 @@ export async function saveFileToDatabase(name: string, content: string, size: nu
       url: "stored-in-db",
       size,
       userId,
-      content, // ✅ now saving the actual file content
+      content,
+      fileType,
+      originalBinary: originalBinary || null,
     },
   })
 

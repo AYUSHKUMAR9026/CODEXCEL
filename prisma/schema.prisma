@@ -7,12 +7,14 @@ datasource db {
 }
 
 model File {
-  id        String   @id @default(cuid())
-  name      String
-  url       String
-  size      Int
-  userId    String
-  content   String   // ✅ store actual file content
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id             String   @id @default(cuid())
+  name           String
+  url            String
+  size           Int
+  content        String   // CSV version for AI
+  originalBinary String?  // ✅ Base64 encoded original file for download
+  fileType       String   @default("text/csv")
+  userId         String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }

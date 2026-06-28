@@ -5,12 +5,9 @@ import prisma from "@/lib/prisma-db";
 export async function POST(req: Request) {
   try {
     const { userId } = await auth();
+    if (!userId) return new NextResponse("Unauthorized", { status: 401 });
 
-    if (!userId) {
-      return new NextResponse("Unauthorized", { status: 401 });
-    }
-
-    const { name, content, size } = await req.json();
+    const { name, content, size, fileType, originalBinary } = await req.json();
 
     if (!name || !content) {
       return new NextResponse("Missing required fields", { status: 400 });
@@ -22,7 +19,9 @@ export async function POST(req: Request) {
         url: "stored-in-db",
         size,
         userId,
-        content, // ✅ now actually saving the content
+        content,
+        fileType: fileType || "text/csv",
+        originalBinary: originalBinary || null,  // ✅ store original
       },
     });
 

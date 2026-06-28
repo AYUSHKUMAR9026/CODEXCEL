@@ -9,20 +9,35 @@ export async function GET(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const fileId = searchParams.get("id");
-
     if (!fileId) return new NextResponse("Missing file ID", { status: 400 });
 
     const file = await prisma.file.findFirst({
-      where: { id: fileId, userId }, // ✅ only allow owner to download
+      where: { id: fileId, userId },
     });
 
     if (!file) return new NextResponse("File not found", { status: 404 });
 
-    // Send content back as a downloadable file
+    const isExcel =
+      file.name.endsWith(".xlsx") ||
+      file.name.endsWith(".xls")
+
+    if (isExcel && file.originalBinary) {
+      // ✅ Serve the original binary directly — no conversion needed
+      const buffer = Buffer.from(file.originalBinary, "base64")
+
+      return new NextResponse(buffer, {
+        headers: {
+          "Content-Disposition": `attachment; filename="${file.name}"`,
+          "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        },
+      })
+    }
+
+    // CSV or Excel without stored binary — serve as text
     return new NextResponse(file.content, {
       headers: {
         "Content-Disposition": `attachment; filename="${file.name}"`,
-        "Content-Type": "application/octet-stream",
+        "Content-Type": isExcel ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" : "text/csv",
       },
     });
   } catch (error) {
