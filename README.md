@@ -1,36 +1,66 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🧠 Codexcel — AI-Powered Data Analysis Platform
+---
 
-## Getting Started
+## 📌 What Is Codexcel?
 
-First, run the development server:
+Codexcel is a full-stack web application that allows users to **upload large datasets** (CSV or Excel files) and **ask questions about their data** using a conversational AI chatbot — all without writing a single line of code.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+The core problem it solves: 
+1)When you try to upload a large file to a regular AI (like ChatGPT), it throws a **"context limit exceeded"** error. Codexcel solves this using **RAG (Retrieval-Augmented Generation)** — a production-grade AI architecture that splits your file into chunks, converts them into vectors, and only retrieves the most relevant pieces when answering your question.
+
+
+2)user can also save there files here which he can view whenever he want 
+---
+
+## ✨ Features
+
+- 🔐 **Secure Authentication** — Sign up and login via Clerk
+- 📂 **File Upload** — Drag and drop CSV or Excel (.xlsx) files
+- 💾 **File Manager** — Save, view, download, and delete your files
+- 🤖 **AI Chat** — Ask natural language questions about your data
+- 🧩 **RAG System** — Handles files of any size using vector search
+- ⚡ **Streaming Responses** — AI answers appear word by word in real time
+- 🔒 **Data Privacy** — Each user can only access their own files
+
+---
+
+-
+
+
+> ✅ **This project runs entirely on free tiers — no credit card required.**
+
+---
+
+## 🧠 How RAG Works in This Project
+
+Traditional AI fails with large files because of context limits. RAG solves this:
+
+**Without RAG:**
+```
+Upload 10MB file → Send entire file to AI → ❌ Error: Context limit exceeded
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+**With RAG:**
+```
+Upload 10MB file
+→ Split into 50-row chunks
+→ Convert each chunk to a 384-number vector (mathematical meaning)
+→ Store vectors in Pinecone
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+User asks "What is Somalia's rank?"
+→ Convert question to vector
+→ Pinecone finds top 5 chunks most similar to the question
+→ Send only those 5 chunks to AI
+→ ✅ Accurate answer, no context limit, works for any file size
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+---
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 🙋 Author
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Built by **Ayush Kumar**
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+> ⭐ If you found this project helpful, please give it a star on GitHub!
