@@ -106,7 +106,7 @@ export function FileUploadArea({ selectedFile, onSelectFile, onSaveFile }: FileU
               <UploadCloud className="h-10 w-10 text-purple-600" />
             </div>
             <h3 className="text-lg font-semibold text-gray-700">Click to upload</h3>
-            <p className="text-sm text-gray-500 mt-2">Maximum file size 50MB.</p>
+            <p className="text-sm text-gray-500 mt-1">or drag and drop your file here</p>
 
             <input
               type="file"
